@@ -1,0 +1,411 @@
+include( "shared.lua" )
+
+LocalPlayer = LocalPlayer
+gemotions = gemotions
+CurTime = CurTime
+:Add = hook
+
+CreateClientConVar( "gemotions_user_audio", "1", true, true, "Enables audio playback for emotions that support this feature.", 0, 1 )
+PRE_HOOK = PRE_HOOK or HOOK_MONITOR_HIGH
+:enabled = gemotions.convars
+
+concommand.Add "+gemotions", ( ply, _, args ) ->
+    unless enabled\GetBool!
+        return
+
+    keyCode = args[ 1 ]
+    if keyCode ~= nil and #keyCode > 0
+        keyCode = tonumber( keyCode )
+        if keyCode ~= nil
+            bind = input.LookupKeyBinding( keyCode )
+            if bind ~= nil and #bind > 0 and bind ~= "+gemotions"
+                return
+
+    unless IsValid( gemotions.panel )
+        gemotions.panel = vgui.Create( "G-Emotions::Menu" )
+
+    gemotions.panel\Show!
+    return
+
+concommand.Add "-gemotions", ( ply, _, args ) ->
+    unless IsValid( gemotions.panel )
+        return
+
+    if enabled\GetBool!
+        gemotions.panel\Hide!
+    else
+        gemotions.panel\Remove!
+        gemotions.panel = nil
+
+screenWidth, screenHeight, screenCenterX, screenCenterY, vmin = 0, 0, 0, 0, 0
+
+do
+
+    :ReadPlayer, :ReadUInt, :ReadBool = net
+    :packages, :GetEmotion = gemotions
+    :lifetime = gemotions.convars
+    :pi, :max = math
+    :PlayURL = sound
+    :Remove = hook
+    length = 0
+
+    :queue = gemotions
+    unless queue
+        queue = {}
+        gemotions.queue = queue
+
+    functions = {
+        [ 0 ]: ->
+            data = net.ReadTable( true )
+            for packageData in *data
+                emotions = packageData.emotions
+                if emotions ~= nil
+                    length = #emotions
+                    for index = 1, length
+                        emotion = emotions[ index ]
+                        if emotion ~= nil
+                            emotion.scale = 1
+                            emotion.material = emotion.material or false
+
+                    packageData.count = length
+                    packageData.step = ( pi * 2 ) / length
+                    packageData.radius = max( vmin * 10, ( ( vmin * 8 ) * length ) / ( 2 * pi ) )
+
+            for index = 1, #packages
+                packages[ index ] = nil
+
+            length = #data
+            for index = 1, length
+                packages[ index ] = data[ index ]
+
+            gemotions.packagesCount = length
+
+            if IsValid( gemotions.panel )
+                gemotions.panel\Remove!
+
+            return
+
+        [ 1 ]: ->
+            ply = ReadPlayer!
+            unless ply or ply\IsValid!
+                return
+
+            emotion, noSound = GetEmotion( ReadUInt( 10 ), ReadUInt( 14 ) ), ReadBool!
+            unless emotion
+                return
+
+            startTime, lifeTime = CurTime!, emotion.lifetime or lifetime\GetFloat!
+            queue[ ply ] = { emotion, startTime, lifeTime, 0 }
+
+            channel = ply.m_GEmotionsAudioChannel
+            if channel and channel\IsValid!
+                Remove "Think", channel
+                channel\Stop!
+
+            if noSound
+                return
+
+            PlayURL emotion.sound, "3d", ( channel ) ->
+                unless channel and channel\IsValid! and ply\IsValid! and ply\Alive! and not ply\IsDormant!
+                    return
+
+                ply.m_GEmotionsAudioChannel = channel
+
+                Add "Think", channel, ->
+                    unless channel\IsValid!
+                        Remove "Think", channel
+                        return
+
+                    if ( CurTime! - startTime ) > lifeTime or not ( ply\IsValid! and ply\Alive! and not ply\IsDormant! )
+                        Remove "Think", channel
+                        channel\Stop!
+                        return
+
+                    data = queue[ ply ]
+                    if not data or data[ 1 ] ~= emotion
+                        Remove "Think", channel
+                        channel\Stop!
+                        return
+
+                    channel\SetPos( ply\WorldSpaceCenter!, ply\GetAimVector! )
+                    return
+
+                channel\Play!
+
+            return
+    }
+
+    net.Receive "GEmotions::Networking", ->
+        func = functions[ ReadUInt( 2 ) ]
+        if func ~= nil
+            func!
+
+preformMaterial = nil
+do
+
+    default = Material( "icon16/arrow_refresh.png", "ignorez mips" )
+    ErrorNoHaltWithStack = ErrorNoHaltWithStack
+    :GetExtensionFromFilename, :find = string
+    file.CreateDir( "g-emotions/cache" )
+    :Exists, :Write = file
+    Material = Material
+    :Fetch = http
+    :MD5 = util
+
+    cache = {}
+
+    preformMaterial = ( filePath ) ->
+        if cache[ filePath ] == nil
+            if find( filePath, "^https?://.+$" ) ~= nil
+                cachePath = "g-emotions/cache/" .. MD5( filePath ) .. "." .. ( GetExtensionFromFilename( filePath ) or "png" )
+                if Exists( cachePath, "DATA" )
+                    cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez mips" )
+                else
+                    Fetch( filePath, ( content, _, __, code ) ->
+                        if code ~= 200
+                            ErrorNoHaltWithStack( "Failed to download '" .. filePath .. "' (" .. code .. ")" )
+                            return
+
+                        Write( cachePath, content )
+                        cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez mips" )
+                    ErrorNoHaltWithStack )
+
+            elseif Exists( "materials/" .. filePath, "GAME" )
+                cache[ filePath ] = Material( filePath, "smooth ignorez mips" )
+
+            unless cache[ filePath ]
+                cache[ filePath ] = default
+
+        return cache[ filePath ]
+
+do
+
+    :Begin, :Color, :Position, :TexCoord, :AdvanceVertex, :End = mesh
+	:SetUnpacked = FindMetaTable( "Vector" )
+    :SetMaterial = render
+
+	mesh1, mesh2, mesh3, mesh4 = Vector( 0, 0, 0 ), Vector( 0, 0, 0 ), Vector( 0, 0, 0 ), Vector( 0, 0, 0 )
+    right, bot = 0, 0
+
+	drawTexturedRect = ( x, y, width, height, material, alpha ) ->
+		right, bot = x + width, y + height
+
+		SetUnpacked( mesh1, x, y, 0 )
+		SetUnpacked( mesh2, right, y, 0 )
+		SetUnpacked( mesh3, right, bot, 0 )
+		SetUnpacked( mesh4, x, bot, 0 )
+
+        -- Default alpha
+		unless alpha
+			alpha = 255
+
+        -- Begin
+		SetMaterial( material )
+		Begin( 7, 1 )
+
+        -- Mesh 1
+        Position( mesh1 )
+        Color( 255, 255, 255, alpha )
+        TexCoord( 0, 0, 0 )
+        AdvanceVertex!
+
+        -- Mesh 2
+        Position( mesh2 )
+        Color( 255, 255, 255, alpha )
+        TexCoord( 0, 1, 0 )
+        AdvanceVertex!
+
+        -- Mesh 3
+        Position( mesh3 )
+        Color( 255, 255, 255, alpha )
+        TexCoord( 0, 1, 1 )
+        AdvanceVertex!
+
+        -- Mesh 4
+        Position( mesh4 )
+        Color( 255, 255, 255, alpha )
+        TexCoord( 0, 0, 1 )
+        AdvanceVertex!
+
+        -- End
+		End!
+        return
+
+    gemotions.DrawTexturedRect = drawTexturedRect
+
+	gemotions.DrawEmote = ( emotion, x, y, width, height, alpha ) ->
+		drawTexturedRect( x, y, width, height, preformMaterial( "https://i.imgur.com/zZfip8v.png" ), alpha )
+		drawTexturedRect( x + width * 0.075, y + width * 0.075, width * 0.85, width * 0.85, preformMaterial( emotion.material ), alpha )
+        return
+
+	gemotions.DrawEmoteQuad = ( emotion, x, y, width, height, alpha ) ->
+		drawTexturedRect( x, y, width, height, preformMaterial( "https://i.imgur.com/bjDvQJq.png" ), alpha )
+		drawTexturedRect( x + width * 0.075, y + height * 0.075, width * 0.85, height * 0.85, preformMaterial( emotion.material ), alpha )
+        return
+
+unless game.SinglePlayer!
+
+    :LookupKeyBinding = input
+    :key = gemotions.convars
+
+	Add( "PlayerButtonDown", "G-Emotions::Open", ( ply, keyCode ) ->
+		if enabled\GetBool! and key\GetInt! == keyCode
+            binding = LookupKeyBinding( keyCode )
+            if binding and #binding ~= 0
+                return
+
+            RunConsoleCommand( "+gemotions" )
+            return
+
+    PRE_HOOK )
+
+    Add( "PlayerButtonUp", "G-Emotions::Close", ( ply, keyCode ) ->
+		if enabled\GetBool! and key\GetInt! == keyCode
+            binding = LookupKeyBinding( keyCode )
+            if binding and #binding ~= 0
+                return
+
+            RunConsoleCommand( "-gemotions" )
+            return
+
+    PRE_HOOK )
+
+Add( "InitPostEntity", "G-Emotions::Init", ->
+    gemotions.LocalPlayer = LocalPlayer!
+    gemotions.LocalPlayerIndex = gemotions.LocalPlayer\EntIndex!
+
+PRE_HOOK )
+
+SetUnpackedVector = FindMetaTable( "Vector" ).SetUnpacked
+SetUnpackedAngle = FindMetaTable( "Angle" ).SetUnpacked
+Lerp, RealFrameTime = Lerp, RealFrameTime
+:InOutBack = math.ease
+:DrawEmote = gemotions
+:abs = math
+
+curTime, scale = 0, 0
+:queue = gemotions
+
+Add( "EntityRemoved", "G-Emotions::Clean", ( ply ) ->
+    if ply\IsPlayer!
+        queue[ ply ] = nil
+
+PRE_HOOK )
+
+do
+
+	:Start3D2D, :End3D2D = cam
+    :Iterator = player
+
+	Add "PostDrawTranslucentRenderables", "G-Emotions::WorldDraw", ( ply ) ->
+        unless enabled\GetBool!
+            return
+
+        eyePos = EyePos!
+
+        for _, ply in Iterator!
+            data = queue[ ply ]
+            if not data or ( ply\EntIndex! == gemotions.LocalPlayerIndex and not ply\ShouldDrawLocalPlayer! )
+                continue
+
+            curTime = CurTime!
+            fraction = 1 - ( curTime - data[ 2 ] ) / data[ 3 ]
+
+            if fraction > 1
+                fraction = 1
+            elseif fraction < 0
+                fraction = 0
+
+            if fraction == 0 or not ply\Alive!
+                queue[ ply ] = nil
+                continue
+
+            scale = Lerp( RealFrameTime! * 8, data[ 4 ], fraction > 0.01 and 0.45 or 0 )
+            data[ 4 ] = scale
+
+            bone, origin = ply\LookupBone( "ValveBiped.Bip01_Head1" ), nil
+            if bone and bone >= 0
+                origin, angles = ply\GetBonePosition( bone )
+                if origin == ply\GetPos!
+                    origin = ply\GetShootPos!
+
+                hitboxset = ply\GetHitboxSet!
+                for hitbox = 0, ply\GetHitBoxCount( hitboxset )
+                    if bone == ply\GetHitBoxBone( hitbox, hitboxset )
+                        mins, maxs = ply\GetHitBoxBounds( hitbox, hitboxset )
+                        origin += angles\Forward! * ( maxs[ 3 ] - mins[ 3 ] ) * 1.5
+                        break
+
+            else
+                origin = ply\EyePos!
+                origin[ 3 ] += 10
+
+            angle = ( origin - eyePos )\Angle!
+            SetUnpackedAngle( angle, ( InOutBack( abs( ( curTime * 2 ) % 2 - 1 ) ) - 0.5 ) * 15, angle[ 2 ] - 90, 90 )
+
+            Start3D2D( origin, angle, scale )
+            DrawEmote( data[ 1 ], -16, -38, 32, 38 )
+            End3D2D!
+
+do
+
+    :Translate, :Rotate, :Scale, :Zero = FindMetaTable( "VMatrix" )
+    :PushModelMatrix, :PopModelMatrix = cam
+    Matrix = Matrix
+
+    angles = Angle!
+    vector = Vector!
+
+    resolutionChanged = ->
+        screenWidth, screenHeight = ScrW!, ScrH!
+        vmin = math.min( screenWidth, screenHeight ) / 100
+        screenCenterX, screenCenterY = screenWidth / 2, screenHeight / 2
+
+    Add "OnScreenSizeChanged", "G-Emotions::HUD", resolutionChanged
+    resolutionChanged!
+
+    Add "HUDPaint", "G-Emotions::HUD", ->
+        unless enabled\GetBool!
+            return
+
+        ply = LocalPlayer!
+        if ply\ShouldDrawLocalPlayer!
+            return
+
+        data = queue[ ply ]
+        unless data
+            return
+
+        curTime = CurTime!
+        fraction = 1 - ( curTime - data[ 2 ] ) / data[ 3 ]
+
+        if fraction > 1
+            fraction = 1
+        elseif fraction < 0
+            fraction = 0
+
+        if fraction == 0 or not ply\Alive!
+            queue[ ply ] = nil
+            return
+
+        scale = Lerp( RealFrameTime! * 8, data[ 4 ], fraction > 0.01 and 0.45 or 0 )
+        data[ 4 ] = scale
+
+        matrix = Matrix!
+
+        SetUnpackedVector( vector, screenCenterX, vmin * 20, 0 )
+        Translate( matrix, vector )
+
+        SetUnpackedAngle( angles, 0, ( InOutBack( abs( ( curTime * 2 ) % 2 - 1 ) ) - 0.5 ) * 15, 0 )
+        Rotate( matrix, angles )
+
+        SetUnpackedVector( vector, scale, scale, 0 )
+        Scale( matrix, vector )
+
+        SetUnpackedVector( vector, -screenCenterX, 0, 0 )
+        Translate( matrix, vector )
+
+        PushModelMatrix( matrix )
+        DrawEmote( data[ 1 ], screenCenterX - 160, -380, 320, 380 )
+        PopModelMatrix!
+        return

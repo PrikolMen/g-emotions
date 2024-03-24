@@ -1,0 +1,70 @@
+global gemotions = gemotions or {}
+
+gemotions.title = "GEmotions"
+gemotions.color = Color( 193, 118, 255 )
+file.CreateDir( "g-emotions" )
+
+do
+
+    FCVAR_FLAGS = bit.bor( FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE )
+
+    gemotions.convars = {
+        key: CreateConVar( "gemotions_key", tostring( KEY_T ), FCVAR_FLAGS )
+        enabled: CreateConVar( "gemotions_enabled", "1", FCVAR_FLAGS )
+        audio: CreateConVar( "gemotions_audio", "1", FCVAR_FLAGS )
+        lifetime: CreateConVar( "gemotions_lifetime", "5", FCVAR_FLAGS )
+    }
+
+do
+
+	head = "[" .. gemotions.title .. "] "
+	color_text = Color( 210, 210, 210 )
+    MsgC = MsgC
+
+    gemotions.Log = ( ... ) ->
+        MsgC( gemotions.color, head, color_text, ..., "\n" )
+
+do
+
+    packages = gemotions.packages
+    unless packages
+        packages = {}
+        gemotions.packages = packages
+
+    gemotions.GetPackage = ( packageName ) ->
+        return packages[ packageName ]
+
+    gemotions.GetPackages = ->
+        return packages
+
+    gemotions.GetEmotion = ( packageID, emotionID ) ->
+        package = packages[ packageID ]
+        unless package
+            return
+
+        :emotions = package
+        unless emotions
+            return
+
+        return emotions[ emotionID ]
+
+do
+
+    :GetTable = sound
+    :Exists = file
+
+    soundExists = ( filePath ) ->
+        if Exists( filePath, "GAME" )
+            return true
+
+        for soundName in *GetTable!
+            if soundName == filePath
+                return true
+
+        return false
+
+    gemotions.SoundExists = soundExists
+
+-- ULib support ( I really don't like this )
+if file.Exists( "ulib/shared/hook.lua", "LUA" )
+    include( "ulib/shared/hook.lua" )
