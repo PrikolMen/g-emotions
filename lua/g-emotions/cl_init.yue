@@ -37,7 +37,7 @@ concommand.Add "-gemotions", ( ply, _, args ) ->
         gemotions.panel\Remove!
         gemotions.panel = nil
 
-screenWidth, screenHeight, screenCenterX, screenCenterY, vmin = 0, 0, 0, 0, 0
+screenWidth, screenHeight, screenCenterX, vmin = 0, 0, 0, 0
 
 do
 
@@ -97,10 +97,10 @@ do
             startTime, lifeTime = CurTime!, emotion.lifetime or lifetime\GetFloat!
             queue[ ply ] = { emotion, startTime, lifeTime, 0 }
 
-            channel = ply.m_GEmotionsAudioChannel
-            if channel and channel\IsValid!
-                Remove "Think", channel
-                channel\Stop!
+            oldChannel = ply.m_GEmotionsAudioChannel
+            if oldChannel and oldChannel\IsValid!
+                Remove "Think", oldChannel
+                oldChannel\Stop!
 
             if noSound
                 return
@@ -297,7 +297,7 @@ do
 	:Start3D2D, :End3D2D = cam
     :Iterator = player
 
-	Add "PostDrawTranslucentRenderables", "G-Emotions::WorldDraw", ( ply ) ->
+	Add "PostDrawTranslucentRenderables", "G-Emotions::WorldDraw", ->
         unless enabled\GetBool!
             return
 
@@ -349,7 +349,7 @@ do
 
 do
 
-    :Translate, :Rotate, :Scale, :Zero = FindMetaTable( "VMatrix" )
+    :Translate, :Rotate, :Scale = FindMetaTable( "VMatrix" )
     :PushModelMatrix, :PopModelMatrix = cam
     Matrix = Matrix
 
@@ -359,7 +359,7 @@ do
     resolutionChanged = ->
         screenWidth, screenHeight = ScrW!, ScrH!
         vmin = math.min( screenWidth, screenHeight ) / 100
-        screenCenterX, screenCenterY = screenWidth / 2, screenHeight / 2
+        screenCenterX = screenWidth / 2
 
     Add "OnScreenSizeChanged", "G-Emotions::HUD", resolutionChanged
     resolutionChanged!
