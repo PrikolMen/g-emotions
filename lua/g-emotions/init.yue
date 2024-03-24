@@ -8,6 +8,7 @@ istable = istable
 :Send = net
 
 PRE_HOOK = PRE_HOOK or HOOK_MONITOR_HIGH
+resource.AddWorkshop( "3198355085" )
 
 -- Emotions Packages
 do
