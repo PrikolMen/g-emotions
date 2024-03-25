@@ -143,7 +143,7 @@ do
 preformMaterial = nil
 do
 
-    default = Material( "icon16/arrow_refresh.png", "ignorez mips" )
+    default = Material( "icon16/arrow_refresh.png", "ignorez" )
     ErrorNoHaltWithStack = ErrorNoHaltWithStack
     :GetExtensionFromFilename, :find = string
     file.CreateDir( "g-emotions/cache" )
@@ -159,7 +159,7 @@ do
             if find( filePath, "^https?://.+$" ) ~= nil
                 cachePath = "g-emotions/cache/" .. MD5( filePath ) .. "." .. ( GetExtensionFromFilename( filePath ) or "png" )
                 if Exists( cachePath, "DATA" )
-                    cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez mips" )
+                    cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez" )
                 else
                     Fetch( filePath, ( content, _, __, code ) ->
                         if code ~= 200
@@ -167,11 +167,11 @@ do
                             return
 
                         Write( cachePath, content )
-                        cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez mips" )
+                        cache[ filePath ] = Material( "data/" .. cachePath, "smooth ignorez" )
                     ErrorNoHaltWithStack )
 
             elseif Exists( "materials/" .. filePath, "GAME" )
-                cache[ filePath ] = Material( filePath, "smooth ignorez mips" )
+                cache[ filePath ] = Material( filePath, "smooth ignorez" )
 
             unless cache[ filePath ]
                 cache[ filePath ] = default

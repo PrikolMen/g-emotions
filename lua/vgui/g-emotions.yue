@@ -237,6 +237,8 @@ do
                 emotion.x = screenCenterX + cos( radian ) * packageRadius - emotion.size / 2
                 emotion.y = screenCenterY + sin( radian ) * packageRadius - emotion.size / 2
 
+gemotions_user_quick_select = CreateClientConVar( "gemotions_user_quick_select", "1", true, false, "Allows you to quickly select an emotion.", 0, 1 )
+
 do
 
     animDuration = 0.16
@@ -262,9 +264,12 @@ do
         @SetKeyboardInputEnabled( false )
         return
 
-    PANEL.Hide = =>
+    PANEL.Hide = ( isClick ) =>
         unless @IsVisible!
             return
+
+        if ( isClick or gemotions_user_quick_select\GetBool! ) and @SelectedEmotion ~= nil
+            RunConsoleCommand( "gemotion", @SelectedPackage, @SelectedEmotion )
 
         @Stop!
         @AlphaTo( 0, animDuration, _, animHide )
@@ -274,11 +279,8 @@ do
 
 PANEL.OnMouseReleased = ( keyCode ) =>
     if keyCode > 106 and keyCode < 109
-        if @SelectedEmotion ~= nil
-            RunConsoleCommand( "gemotion", @SelectedPackage, @SelectedEmotion )
-
         PlaySound( "g-emotions/ui/bong.ogg" )
-        @Hide!
+        @Hide( true )
         return
 
 vgui.Register( "G-Emotions::Menu", PANEL, "EditablePanel" )

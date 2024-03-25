@@ -9,10 +9,10 @@ do
     FCVAR_FLAGS = bit.bor( FCVAR_REPLICATED, FCVAR_NOTIFY, FCVAR_ARCHIVE )
 
     gemotions.convars = {
-        key: CreateConVar( "gemotions_key", tostring( KEY_T ), FCVAR_FLAGS )
-        enabled: CreateConVar( "gemotions_enabled", "1", FCVAR_FLAGS )
-        audio: CreateConVar( "gemotions_audio", "1", FCVAR_FLAGS )
-        lifetime: CreateConVar( "gemotions_lifetime", "5", FCVAR_FLAGS )
+        key: CreateConVar( "gemotions_key", tostring( KEY_T ), FCVAR_FLAGS, "Default key to open g-emotions menu, uses keys from https://wiki.facepunch.com/gmod/Enums/KEY", 0, 256 )
+        audio: CreateConVar( "gemotions_audio", "1", FCVAR_FLAGS, "Allows emotions to emit sounds on server.", 0, 1 )
+        lifetime: CreateConVar( "gemotions_lifetime", "5", FCVAR_FLAGS, "Default emotion lifetime.", 0, 2 ^ 30 )
+        enabled: CreateConVar( "gemotions_enabled", "1", FCVAR_FLAGS, "Allows using emotions on server.", 0, 1 )
     }
 
 do
