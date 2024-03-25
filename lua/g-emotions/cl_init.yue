@@ -54,6 +54,8 @@ do
         queue = {}
         gemotions.queue = queue
 
+    curTime = 0
+
     functions = {
         [ 0 ]: ->
             data = net.ReadTable( true )
@@ -94,8 +96,14 @@ do
             unless emotion
                 return
 
-            startTime, lifeTime = CurTime!, emotion.lifetime or lifetime\GetFloat!
-            queue[ ply ] = { emotion, startTime, lifeTime, 0 }
+            curTime = CurTime!
+
+            oldData = queue[ ply ]
+            if oldData and oldData[ 1 ] == emotion and ( curTime - oldData[ 2 ] ) <= oldData[ 3 ]
+                oldData[ 2 ] = curTime
+                return
+
+            queue[ ply ] = { emotion, curTime, emotion.lifetime or lifetime\GetFloat!, 0 }
 
             oldChannel = ply.m_GEmotionsAudioChannel
             if oldChannel and oldChannel\IsValid!
@@ -116,13 +124,13 @@ do
                         Remove "Think", channel
                         return
 
-                    if ( CurTime! - startTime ) > lifeTime or not ( ply\IsValid! and ply\Alive! and not ply\IsDormant! )
+                    unless ply\IsValid! and ply\Alive! and not ply\IsDormant!
                         Remove "Think", channel
                         channel\Stop!
                         return
 
                     data = queue[ ply ]
-                    if not data or data[ 1 ] ~= emotion
+                    if not data or data[ 1 ] ~= emotion or ( CurTime! - data[ 2 ] ) > data[ 3 ]
                         Remove "Think", channel
                         channel\Stop!
                         return

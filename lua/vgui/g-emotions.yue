@@ -25,6 +25,7 @@ PANEL.Init = =>
     @SelectedPackage = 1
     @SetVisible( false )
     @CircleRadius = 128
+    @Selected = false
     @IconSize = 16
     @Emotions = {}
     @SetAlpha( 0 )
@@ -243,6 +244,7 @@ do
 
     animDuration = 0.16
     animHide = ( _, pnl ) ->
+        pnl.Selected = false
         pnl\SetVisible( false )
         pnl\IsMouseInputEnabled( true )
         return
@@ -268,8 +270,9 @@ do
         unless @IsVisible!
             return
 
-        if ( isClick or gemotions_user_quick_select\GetBool! ) and @SelectedEmotion ~= nil
+        if not @Selected and @SelectedEmotion ~= nil and ( isClick or gemotions_user_quick_select\GetBool! )
             RunConsoleCommand( "gemotion", @SelectedPackage, @SelectedEmotion )
+            @Selected = true
 
         @Stop!
         @AlphaTo( 0, animDuration, _, animHide )
