@@ -1,6 +1,7 @@
 include( "shared.lua" )
 
 LocalPlayer = LocalPlayer
+:pi, :max, :floor = math
 gemotions = gemotions
 CurTime = CurTime
 :Add = hook
@@ -44,7 +45,6 @@ do
     :ReadPlayer, :ReadUInt, :ReadBool = net
     :packages, :GetEmotion = gemotions
     :lifetime = gemotions.convars
-    :pi, :max = math
     :PlayURL = sound
     :Remove = hook
     length = 0
@@ -61,7 +61,11 @@ do
             data = net.ReadTable( true )
             for packageData in *data
                 emotions = packageData.emotions
-                if emotions ~= nil
+                if emotions == nil
+                    packageData.count = 0
+                    packageData.step = 0
+                    packageData.radius = 0
+                else
                     length = #emotions
                     for index = 1, length
                         emotion = emotions[ index ]
@@ -82,8 +86,9 @@ do
 
             gemotions.packagesCount = length
 
-            if IsValid( gemotions.panel )
-                gemotions.panel\Remove!
+            panel = gemotions.panel
+            if panel and panel\IsValid!
+                panel\Remove!
 
             return
 
@@ -369,6 +374,28 @@ do
         vmin = math.min( screenWidth, screenHeight ) / 100
         screenCenterX = screenWidth / 2
 
+        for packageData in *gemotions.packages
+            emotions = packageData.emotions
+            if emotions == nil
+                packageData.count = 0
+                packageData.step = 0
+                packageData.radius = 0
+            else
+                length = #emotions
+                for index = 1, length
+                    emotion = emotions[ index ]
+                    if emotion ~= nil
+                        emotion.scale = 1
+                        emotion.material = emotion.material or false
+
+                packageData.count = length
+                packageData.step = ( pi * 2 ) / length
+                packageData.radius = max( vmin * 10, ( ( vmin * 8 ) * length ) / ( 2 * pi ) )
+
+        panel = gemotions.panel
+        if panel and panel\IsValid!
+            panel\Remove!
+
     Add "OnScreenSizeChanged", "G-Emotions::HUD", resolutionChanged
     resolutionChanged!
 
@@ -401,7 +428,7 @@ do
 
         matrix = Matrix!
 
-        SetUnpackedVector( vector, screenCenterX, vmin * 20, 0 )
+        SetUnpackedVector( vector, screenCenterX, floor( vmin * 20 ), 0 )
         Translate( matrix, vector )
 
         SetUnpackedAngle( angles, 0, ( InOutBack( abs( ( curTime * 2 ) % 2 - 1 ) ) - 0.5 ) * 15, 0 )
@@ -414,6 +441,6 @@ do
         Translate( matrix, vector )
 
         PushModelMatrix( matrix )
-        DrawEmote( data[ 1 ], screenCenterX - 160, -380, 320, 380 )
+        DrawEmote( data[ 1 ], screenCenterX - floor( vmin * 14.9 ), -floor( vmin * 35.2 ), floor( vmin * 29.7 ), floor( vmin * 35.2 ) )
         PopModelMatrix!
         return
